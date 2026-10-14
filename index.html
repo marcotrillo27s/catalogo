@@ -322,18 +322,17 @@
     // ==========================================
     // CARGAR PRODUCTOS DESDE GOOGLE APPS SCRIPT
     // ==========================================
-	async function cargarProductos() {
-	  const grid = document.getElementById('productsGrid');
-	  try {
-		const res = await fetch(API_URL, { redirect: "follow" });
-		totalProductos = await res.json();
-		renderizarProductos(totalProductos);
-		actualizarCarritoUI();
-	  } catch (err) {
-		console.error("Detalle del error:", err);
-		grid.innerHTML = '<div class="status-msg">Error al cargar productos.</div>';
-	  }
-	}
+    async function cargarProductos() {
+      const grid = document.getElementById('productsGrid');
+      try {
+        const res = await fetch(API_URL);
+        totalProductos = await res.json();
+        renderizarProductos(totalProductos);
+        actualizarCarritoUI();
+      } catch (err) {
+        grid.innerHTML = '<div class="status-msg">Error al cargar productos.</div>';
+      }
+    }
 
     function renderizarProductos(lista) {
       const grid = document.getElementById('productsGrid');
