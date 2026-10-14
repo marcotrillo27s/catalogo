@@ -313,7 +313,7 @@
     // ==========================================
     // CONFIGURACIÓN
     // ==========================================
-    const API_URL = "https://script.google.com/macros/s/AKfycbxytT5-2SH7q756qqsm-dKOUucQgyqtctMRBulSy1eUksH2Gstu_K0fmOkWjhjgXaFy/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbw_iSdpVp7JNsjlfU9NdI7L8e5taEwiSB9UtiOxPOalXqmAGX0RstZevR8t0af5TTLk/exec";
     const NUMERO_WHATSAPP = "51991806750"; // Tu número con código de país
 
     let totalProductos = [];
@@ -336,36 +336,72 @@
 }
 
     function renderizarProductos(lista) {
-      const grid = document.getElementById('productsGrid');
-      if (lista.length === 0) {
-        grid.innerHTML = '<div class="status-msg">No se encontraron productos.</div>';
-        return;
-      }
+  const grid = document.getElementById('productsGrid');
+  if (!lista || lista.length === 0) {
+    grid.innerHTML = '<div class="status-msg">No se encontraron productos.</div>';
+    return;
+  }
 
-      grid.innerHTML = lista.map(p => {
-        const precio = typeof p.precio === 'number' ? p.precio : parseFloat(p.precio) || 0;
-        const img = p.url_imagen && p.url_imagen.startsWith('http') ? p.url_imagen : 'https://via.placeholder.com/300';
+  grid.innerHTML = lista.map(p => {
+    // 1. Limpieza y parseo de precio (manejo de comas o puntos)
+    const precioLimpio = String(p.precio || 0).replace(',', '.');
+    const precio = parseFloat(precioLimpio) || 0;
 
-        return `
-          <div class="card">
-            <div class="card-img-wrapper">
-              <img src="${img}" alt="${p.nombre}" class="card-img" loading="lazy">
-            </div>
-            <div class="card-body">
-              <span class="card-code">${p.codigo || ''}</span>
-              <h3 class="card-title">${p.nombre}</h3>
-              <p class="card-desc">${p.descripcion || ''}</p>
-              <div class="card-footer">
-                <div class="card-price">S/ ${precio.toFixed(2)}</div>
-                <button class="btn-add-cart" onclick="agregarAlCarrito('${p.id}')">
-                  + Agregar
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
+    // 2. Imagen
+    const img = p.url_imagen && p.url_imagen.startsWith('http') 
+      ? p.url_imagen 
+      : 'https://via.placeholder.com/300';
+
+    // 3. Validación de Stock
+    const stockNum = parseInt(p.stock) || 0;
+    const sinStock = stockNum <= 0;
+
+    // 4. Formateo de Unidad de Medida
+    const unidadMedida = p.unidad_medida 
+      ? `<span class="card-unit" style="color: #666; font-size: 0.85rem; font-weight: normal;"> / ${p.unidad_medida}</span>` 
+      : '';
+
+    // 5. Formateo de Propiedades (color, tamaño, etc.)
+    let htmlPropiedades = '';
+    if (p.propiedades && Array.isArray(p.propiedades) && p.propiedades.length > 0) {
+      const badges = p.propiedades.map(prop => 
+        `<span class="badge-prop" style="display: inline-block; background: #f0f0f0; color: #333; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px; margin-top: 4px;">
+          <strong>${prop.nombre}:</strong> ${prop.valor}
+        </span>`
+      ).join('');
+      
+      htmlPropiedades = `<div class="card-properties" style="margin-top: 6px;">${badges}</div>`;
     }
+
+    // 6. Botón de Compra / Agotado
+    const botonCarrito = sinStock
+      ? `<button class="btn-add-cart disabled" disabled style="background-color: #ccc; cursor: not-allowed; border: none; padding: 8px 12px; border-radius: 6px; color: #fff;">Agotado</button>`
+      : `<button class="btn-add-cart" onclick="agregarAlCarrito('${p.id}')">+ Agregar</button>`;
+
+    return `
+      <div class="card ${sinStock ? 'card-out-of-stock' : ''}" style="${sinStock ? 'opacity: 0.65;' : ''}">
+        <div class="card-img-wrapper">
+          <img src="${img}" alt="${p.nombre}" class="card-img" loading="lazy">
+        </div>
+        <div class="card-body">
+          <!-- Se removió el <span class="card-code">${p.codigo}</span> -->
+          <h3 class="card-title">${p.nombre}</h3>
+          <p class="card-desc">${p.descripcion || ''}</p>
+          
+          <!-- Renderizado de propiedades dinámicas -->
+          ${htmlPropiedades}
+
+          <div class="card-footer" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-price" style="font-weight: bold;">
+              S/ ${precio.toFixed(2)}${unidadMedida}
+            </div>
+            ${botonCarrito}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
     // ==========================================
     // LÓGICA DEL CARRITO
