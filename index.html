@@ -325,7 +325,7 @@
     async function cargarProductos() {
       const grid = document.getElementById('productsGrid');
       try {
-        const res = await fetch(API_URL);
+        const res = await fetch(API_URL, { redirect: "follow" });
         totalProductos = await res.json();
         renderizarProductos(totalProductos);
         actualizarCarritoUI();
