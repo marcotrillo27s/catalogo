@@ -313,7 +313,7 @@
     // ==========================================
     // CONFIGURACIÓN
     // ==========================================
-    const API_URL = "https://script.google.com/macros/s/AKfycbw_iSdpVp7JNsjlfU9NdI7L8e5taEwiSB9UtiOxPOalXqmAGX0RstZevR8t0af5TTLk/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyjmG2KmWpR1PAU7uJjroCjoJWjvy_b-DePnPOef3IO9v7Qtr85zpQ5cG3QIaKYiMzd/exec";
     const NUMERO_WHATSAPP = "51991806750"; // Tu número con código de país
 
     let totalProductos = [];
@@ -335,64 +335,74 @@
   }
 }
 
-    function renderizarProductos(lista) {
+// Variable global para controlar qué foto se está mostrando en cada tarjeta
+const imagenesEstado = {};
+
+function renderizarProductos(lista) {
   const grid = document.getElementById('productsGrid');
   if (!lista || lista.length === 0) {
     grid.innerHTML = '<div class="status-msg">No se encontraron productos.</div>';
     return;
   }
 
-  grid.innerHTML = lista.map(p => {
-    // 1. Limpieza y parseo de precio (manejo de comas o puntos)
-    const precioLimpio = String(p.precio || 0).replace(',', '.');
-    const precio = parseFloat(precioLimpio) || 0;
+  grid.innerHTML = lista.map((p, index) => {
+    // 1. Parsear imágenes (separadas por coma)
+    let imgs = [];
+    if (p.url_imagen && String(p.url_imagen).trim() !== '') {
+      imgs = String(p.url_imagen).split(',').map(u => u.trim()).filter(u => u.length > 0);
+    }
+    if (imgs.length === 0) {
+      imgs = ['https://via.placeholder.com/300?text=Colora'];
+    }
 
-    // 2. Imagen
-    const img = p.url_imagen && p.url_imagen.startsWith('http') 
-      ? p.url_imagen 
-      : 'https://via.placeholder.com/300';
+    // Guardar el estado de la imagen actual para cada tarjeta
+    const prodKey = p.id || index;
+    imagenesEstado[prodKey] = { fotos: imgs, idx: 0 };
 
-    // 3. Validación de Stock
+    // 2. Precio, Stock y Unidad de medida
+    const precio = parseFloat(String(p.precio || 0).replace(',', '.')) || 0;
     const stockNum = parseInt(p.stock) || 0;
     const sinStock = stockNum <= 0;
+    const unidadMedida = p.unidad_medida ? `<span class="card-unit" style="color: #666; font-size: 0.85rem;"> / ${p.unidad_medida}</span>` : '';
 
-    // 4. Formateo de Unidad de Medida
-    const unidadMedida = p.unidad_medida 
-      ? `<span class="card-unit" style="color: #666; font-size: 0.85rem; font-weight: normal;"> / ${p.unidad_medida}</span>` 
-      : '';
-
-    // 5. Formateo de Propiedades (color, tamaño, etc.)
+    // 3. Propiedades dinámicas
     let htmlPropiedades = '';
     if (p.propiedades && Array.isArray(p.propiedades) && p.propiedades.length > 0) {
       const badges = p.propiedades.map(prop => 
-        `<span class="badge-prop" style="display: inline-block; background: #f0f0f0; color: #333; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px; margin-top: 4px;">
+        `<span style="display:inline-block; background:#f0f0f0; color:#333; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:4px;">
           <strong>${prop.nombre}:</strong> ${prop.valor}
         </span>`
       ).join('');
-      
-      htmlPropiedades = `<div class="card-properties" style="margin-top: 6px;">${badges}</div>`;
+      htmlPropiedades = `<div style="margin-top:6px;">${badges}</div>`;
     }
 
-    // 6. Botón de Compra / Agotado
+    // 4. Controles de la Galería (Flechas solo si hay más de 1 imagen)
+    let controlesGaleria = '';
+    if (imgs.length > 1) {
+      controlesGaleria = `
+        <button onclick="cambiarFoto('${prodKey}', -1)" style="position:absolute; left:5px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; z-index:2; font-weight:bold;">&#10094;</button>
+        <button onclick="cambiarFoto('${prodKey}', 1)" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; z-index:2; font-weight:bold;">&#10095;</button>
+        <span id="indicador-${prodKey}" style="position:absolute; bottom:5px; right:8px; background:rgba(0,0,0,0.6); color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:10px; z-index:2;">1 / ${imgs.length}</span>
+      `;
+    }
+
+    // 5. Botón de Agregar
     const botonCarrito = sinStock
-      ? `<button class="btn-add-cart disabled" disabled style="background-color: #ccc; cursor: not-allowed; border: none; padding: 8px 12px; border-radius: 6px; color: #fff;">Agotado</button>`
+      ? `<button disabled style="background-color:#ccc; cursor:not-allowed; border:none; padding:8px 12px; border-radius:6px; color:#fff;">Agotado</button>`
       : `<button class="btn-add-cart" onclick="agregarAlCarrito('${p.id}')">+ Agregar</button>`;
 
     return `
-      <div class="card ${sinStock ? 'card-out-of-stock' : ''}" style="${sinStock ? 'opacity: 0.65;' : ''}">
-        <div class="card-img-wrapper">
-          <img src="${img}" alt="${p.nombre}" class="card-img" loading="lazy">
+      <div class="card ${sinStock ? 'card-out-of-stock' : ''}" style="${sinStock ? 'opacity:0.65;' : ''}">
+        <div class="card-img-wrapper" style="position: relative; overflow: hidden;">
+          <img id="img-${prodKey}" src="${imgs[0]}" alt="${p.nombre}" class="card-img" loading="lazy" style="width:100%; height:auto; display:block;">
+          ${controlesGaleria}
         </div>
         <div class="card-body">
-          <!-- Se removió el <span class="card-code">${p.codigo}</span> -->
           <h3 class="card-title">${p.nombre}</h3>
           <p class="card-desc">${p.descripcion || ''}</p>
-          
-          <!-- Renderizado de propiedades dinámicas -->
           ${htmlPropiedades}
-
-          <div class="card-footer" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div class="card-price" style="font-weight: bold;">
+          <div class="card-footer" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div class="card-price" style="font-weight:bold;">
               S/ ${precio.toFixed(2)}${unidadMedida}
             </div>
             ${botonCarrito}
@@ -401,6 +411,22 @@
       </div>
     `;
   }).join('');
+}
+
+// Función para cambiar de imagen al hacer clic en las flechas
+function cambiarFoto(prodKey, direccion) {
+  const estado = imagenesEstado[prodKey];
+  if (!estado) return;
+
+  // Calcular siguiente índice
+  estado.idx = (estado.idx + direccion + estado.fotos.length) % estado.fotos.length;
+
+  // Actualizar la etiqueta <img> e indicador de texto
+  const imgElem = document.getElementById(`img-${prodKey}`);
+  const indElem = document.getElementById(`indicador-${prodKey}`);
+
+  if (imgElem) imgElem.src = estado.fotos[estado.idx];
+  if (indElem) indElem.innerText = `${estado.idx + 1} / ${estado.fotos.length}`;
 }
 
     // ==========================================
