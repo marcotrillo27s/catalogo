@@ -1,22 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta name="google-site-verification" content="sonGSQJtqYqzJoYk8pWPAwFuUKC1vVSeBycqwWTiPAM" />
-  <!-- Título que aparecerá en las búsquedas de Google -->
-  <title>Colora | Tienda de Globos, Decoración y Artículos de Fiesta</title>
-
-  <!-- Descripción breve que se muestra debajo del título en Google -->
-  <meta name="description" content="Encuentra kits de decoración de cumpleaños, globos de números, velas espirales, cortinas decorativas y más en Colora. Haz tu pedido directo por WhatsApp.">
-
-  <!-- Palabras clave principales -->
-  <meta name="keywords" content="Colora, globos feliz cumpleaños, decoracion fiesta, velas reposteria, globos retro, piñatería lima">
-
-  <!-- Indexación para los robots de Google -->
-  <meta name="robots" content="index, follow">
-
-  <!-- URL Canónica -->
-  <link rel="canonical" href="https://www.colora.net.pe/" />
-  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catálogo & Carrito de Pedidos</title>
@@ -143,7 +127,6 @@
       flex-grow: 1;
     }
 
-    .card-code { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
     .card-title { font-size: 1rem; font-weight: 600; margin: 4px 0 8px 0; }
     .card-desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; flex-grow: 1; }
 
@@ -329,7 +312,7 @@
     // ==========================================
     // CONFIGURACIÓN
     // ==========================================
-    const API_URL = "https://script.google.com/macros/s/AKfycbyjmG2KmWpR1PAU7uJjroCjoJWjvy_b-DePnPOef3IO9v7Qtr85zpQ5cG3QIaKYiMzd/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbw_iSdpVp7JNsjlfU9NdI7L8e5taEwiSB9UtiOxPOalXqmAGX0RstZevR8t0af5TTLk/exec";
     const NUMERO_WHATSAPP = "51991806750"; // Tu número con código de país
 
     let totalProductos = [];
@@ -339,226 +322,59 @@
     // CARGAR PRODUCTOS DESDE GOOGLE APPS SCRIPT
     // ==========================================
     async function cargarProductos() {
-  const grid = document.getElementById('productsGrid');
-  try {
-    const res = await fetch(API_URL, { redirect: "follow" });
-    totalProductos = await res.json();
-    renderizarProductos(totalProductos);
-    actualizarCarritoUI();
-  } catch (err) {
-    console.error("Detalle del error:", err);
-    grid.innerHTML = '<div class="status-msg">Error al cargar productos.</div>';
-  }
-}
-
-// Variable global para controlar qué foto se está mostrando en cada tarjeta
-const imagenesEstado = {};
-
-function renderizarProductos(lista) {
-  const grid = document.getElementById('productsGrid');
-  if (!lista || lista.length === 0) {
-    grid.innerHTML = '<div class="status-msg">No se encontraron productos.</div>';
-    return;
-  }
-
-  grid.innerHTML = lista.map((p, index) => {
-    // 1. Parsear imágenes (separadas por coma)
-    let imgs = [];
-    if (p.url_imagen && String(p.url_imagen).trim() !== '') {
-      imgs = String(p.url_imagen).split(',').map(u => u.trim()).filter(u => u.length > 0);
-    }
-    if (imgs.length === 0) {
-      imgs = ['https://via.placeholder.com/300?text=Colora'];
-    }
-
-    // Guardar el estado de la imagen actual para cada tarjeta
-    const prodKey = p.id || index;
-    imagenesEstado[prodKey] = { fotos: imgs, idx: 0 };
-
-    // 2. Precio, Stock y Unidad de medida
-    const precio = parseFloat(String(p.precio || 0).replace(',', '.')) || 0;
-    const stockNum = parseInt(p.stock) || 0;
-    const sinStock = stockNum <= 0;
-    const unidadMedida = p.unidad_medida ? `<span class="card-unit" style="color: #666; font-size: 0.85rem;"> / ${p.unidad_medida}</span>` : '';
-
-    // 3. Propiedades dinámicas
-    let htmlPropiedades = '';
-    if (p.propiedades && Array.isArray(p.propiedades) && p.propiedades.length > 0) {
-      const badges = p.propiedades.map(prop => 
-        `<span style="display:inline-block; background:#f0f0f0; color:#333; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin-right:4px;">
-          <strong>${prop.nombre}:</strong> ${prop.valor}
-        </span>`
-      ).join('');
-      htmlPropiedades = `<div style="margin-top:6px;">${badges}</div>`;
-    }
-
-    // 4. Controles de la Galería (Flechas solo si hay más de 1 imagen)
-    let controlesGaleria = '';
-    if (imgs.length > 1) {
-      controlesGaleria = `
-        <button onclick="cambiarFoto('${prodKey}', -1)" style="position:absolute; left:5px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; z-index:2; font-weight:bold;">&#10094;</button>
-        <button onclick="cambiarFoto('${prodKey}', 1)" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; z-index:2; font-weight:bold;">&#10095;</button>
-        <span id="indicador-${prodKey}" style="position:absolute; bottom:5px; right:8px; background:rgba(0,0,0,0.6); color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:10px; z-index:2;">1 / ${imgs.length}</span>
-      `;
-    }
-
-    // 5. Botón de Agregar
-    const botonCarrito = sinStock
-      ? `<button disabled style="background-color:#ccc; cursor:not-allowed; border:none; padding:8px 12px; border-radius:6px; color:#fff;">Agotado</button>`
-      : `<button class="btn-add-cart" onclick="agregarAlCarrito('${p.id}')">+ Agregar</button>`;
-
-    return `
-      <div class="card ${sinStock ? 'card-out-of-stock' : ''}" style="${sinStock ? 'opacity:0.65;' : ''}">
-        <div class="card-img-wrapper" style="position: relative; overflow: hidden;">
-          <img id="img-${prodKey}" src="${imgs[0]}" alt="${p.nombre}" class="card-img" loading="lazy" style="width:100%; height:auto; display:block;">
-          ${controlesGaleria}
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">${p.nombre}</h3>
-          <p class="card-desc">${p.descripcion || ''}</p>
-          ${htmlPropiedades}
-          <div class="card-footer" style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
-            <div class="card-price" style="font-weight:bold;">
-              S/ ${precio.toFixed(2)}${unidadMedida}
-            </div>
-            ${botonCarrito}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// Función para cambiar de imagen al hacer clic en las flechas
-function cambiarFoto(prodKey, direccion) {
-  const estado = imagenesEstado[prodKey];
-  if (!estado) return;
-
-  // Calcular siguiente índice
-  estado.idx = (estado.idx + direccion + estado.fotos.length) % estado.fotos.length;
-
-  // Actualizar la etiqueta <img> e indicador de texto
-  const imgElem = document.getElementById(`img-${prodKey}`);
-  const indElem = document.getElementById(`indicador-${prodKey}`);
-
-  if (imgElem) imgElem.src = estado.fotos[estado.idx];
-  if (indElem) indElem.innerText = `${estado.idx + 1} / ${estado.fotos.length}`;
-}
-
-    // ==========================================
-    // LÓGICA DEL CARRITO
-    // ==========================================
-    function agregarAlCarrito(id) {
-      const producto = totalProductos.find(p => String(p.id) === String(id));
-      if (!producto) return;
-
-      const itemEnCarrito = carrito.find(item => String(item.id) === String(id));
-
-      if (itemEnCarrito) {
-        itemEnCarrito.cantidad++;
-      } else {
-        carrito.push({
-          id: producto.id,
-          codigo: producto.codigo || 'S/C',
-          nombre: producto.nombre,
-          precio: typeof producto.precio === 'number' ? producto.precio : parseFloat(producto.precio) || 0,
-          cantidad: 1
-        });
+      const grid = document.getElementById('productsGrid');
+      try {
+        const res = await fetch(API_URL, { redirect: "follow" });
+        totalProductos = await res.json();
+        renderizarProductos(totalProductos);
+        actualizarCarritoUI();
+      } catch (err) {
+        console.error("Detalle del error:", err);
+        grid.innerHTML = '<div class="status-msg">Error al cargar productos.</div>';
       }
-
-      guardarYActualizar();
     }
 
-    function cambiarCantidad(id, cambio) {
-      const item = carrito.find(i => String(i.id) === String(id));
-      if (!item) return;
+    // Variable global para controlar qué foto se está mostrando en cada tarjeta
+    const imagenesEstado = {};
 
-      item.cantidad += cambio;
-      if (item.cantidad <= 0) {
-        carrito = carrito.filter(i => String(i.id) !== String(id));
-      }
-
-      guardarYActualizar();
-    }
-
-    function guardarYActualizar() {
-      localStorage.setItem('cart_items', JSON.stringify(carrito));
-      actualizarCarritoUI();
-    }
-
-    function actualizarCarritoUI() {
-      // 1. Contador del header
-      const totalItems = carrito.reduce((sum, i) => sum + i.cantidad, 0);
-      document.getElementById('cartBadge').innerText = totalItems;
-
-      // 2. Lista de productos en el sidebar
-      const container = document.getElementById('cartItems');
-      if (carrito.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:20px;">El carrito está vacío</p>';
-      } else {
-        container.innerHTML = carrito.map(i => `
-          <div class="cart-item">
-            <div class="cart-item-info">
-              <h4>${i.nombre}</h4>
-              <p>S/ ${i.precio.toFixed(2)} c/u</p>
-            </div>
-            <div class="cart-item-controls">
-              <button class="btn-qty" onclick="cambiarCantidad('${i.id}', -1)">-</button>
-              <span>${i.cantidad}</span>
-              <button class="btn-qty" onclick="cambiarCantidad('${i.id}', 1)">+</button>
-            </div>
-          </div>
-        `).join('');
-      }
-
-      // 3. Suma total
-      const totalMonto = carrito.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
-      document.getElementById('cartTotalSum').innerText = `S/ ${totalMonto.toFixed(2)}`;
-    }
-
-    function toggleCart() {
-      document.getElementById('cartOverlay').classList.toggle('active');
-      document.getElementById('cartSidebar').classList.toggle('active');
-    }
-
-    // ==========================================
-    // GENERAR MENSAJE Y ABRIR WHATSAPP
-    // ==========================================
-    function enviarPedidoWhatsApp() {
-      if (carrito.length === 0) {
-        alert("Agrega al menos un producto al carrito para realizar el pedido.");
+    function renderizarProductos(lista) {
+      const grid = document.getElementById('productsGrid');
+      if (!lista || lista.length === 0) {
+        grid.innerHTML = '<div class="status-msg">No se encontraron productos.</div>';
         return;
       }
 
-      let mensaje = `¡Hola! 👋 Quisiera realizar el siguiente pedido:\n\n`;
+      grid.innerHTML = lista.map((p, index) => {
+        // 1. Parsear imágenes (separadas por coma)
+        let imgs = [];
+        if (p.url_imagen && String(p.url_imagen).trim() !== '') {
+          imgs = String(p.url_imagen).split(',').map(u => u.trim()).filter(u => u.length > 0);
+        }
+        if (imgs.length === 0) {
+          imgs = ['https://via.placeholder.com/300?text=Colora'];
+        }
 
-      let totalMonto = 0;
-      carrito.forEach((item, index) => {
-        const subtotal = item.precio * item.cantidad;
-        totalMonto += subtotal;
-        mensaje += `${index + 1}. *${item.nombre}* (Cód: ${item.codigo})\n`;
-        mensaje += `   Cantidad: ${item.cantidad} x S/ ${item.precio.toFixed(2)} = *S/ ${subtotal.toFixed(2)}*\n\n`;
-      });
+        // Guardar el estado de la imagen actual para cada tarjeta
+        const prodKey = p.id || index;
+        imagenesEstado[prodKey] = { fotos: imgs, idx: 0 };
 
-      mensaje += `──────────────────\n`;
-      mensaje += `💰 *TOTAL ESTIMADO: S/ ${totalMonto.toFixed(2)}*\n\n`;
-      mensaje += `¿Me confirman disponibilidad e instrucciones de pago? Gracias.`;
+        // 2. Precio, Stock y Presentación Comercial (unidad_medida, contenido_cant, contenido_unid)
+        const precio = parseFloat(String(p.precio || 0).replace(',', '.')) || 0;
+        const stockNum = parseInt(p.stock) || 0;
+        const sinStock = stockNum <= 0;
 
-      const urlWhatsApp = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
-      window.open(urlWhatsApp, '_blank');
-    }
-
-    // Búsqueda en tiempo real
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      const filtrados = totalProductos.filter(p => 
-        (p.nombre || '').toLowerCase().includes(q) || 
-        (p.codigo || '').toLowerCase().includes(q)
-      );
-      renderizarProductos(filtrados);
-    });
-
-    cargarProductos();
-  </script>
-</body>
-</html>
+        let htmlPresentacion = '';
+        if (p.unidad_medida && p.contenido_cant) {
+          const medida = String(p.unidad_medida).trim();
+          const cantidad = p.contenido_cant;
+          const unidadContenido = p.contenido_unidad ? ` ${String(p.contenido_unidad).trim()}` : '';
+          
+          htmlPresentacion = `
+            <div class="product-presentation-badge" style="display: inline-flex; align-items: center; background-color: #f3f4f6; color: #374151; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin-bottom: 8px; border: 1px solid #e5e7eb;">
+              <span style="color: #4f46e5; text-transform: capitalize; margin-right: 4px;">📦 ${medida}:</span>
+              <span>${cantidad}${unidadContenido}</span>
+            </div>
+          `;
+        } else if (p.unidad_medida) {
+          htmlPresentacion = `
+            <div class="product-presentation-badge" style="display: inline-flex; align-items: center; background-color: #f3f4f6; color: #374151; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin-bottom: 8px; border: 1px solid #e5e7
